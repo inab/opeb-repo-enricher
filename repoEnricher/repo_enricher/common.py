@@ -9,6 +9,8 @@ import json
 from typing import Any, List, Mapping, Optional, Tuple, Union
 from urllib import request
 
+
+
 # This method does the different reads and retries
 # in case of partial contents
 def full_http_read(req: request.Request) -> bytes:
@@ -29,7 +31,24 @@ def full_http_read(req: request.Request) -> bytes:
 
 	return response
 
-def get_opener_with_auth(top_level_url: str, username: str, password: str) -> request.OpenerDirector:
+def get_opener_with_auth(top_level_url: "str", username: "str", password: "str") -> "request.OpenerDirector":
+	"""
+	Taken from https://stackoverflow.com/a/44239906
+	"""
+	
+	# create a password manager
+	password_mgr = request.HTTPPasswordMgrWithPriorAuth()
+	
+	# Add the username and password.
+	# If we knew the realm, we could use it instead of None.
+	password_mgr.add_password(None, top_level_url, username, password, is_authenticated=True)
+	
+	handler = request.HTTPBasicAuthHandler(password_mgr)
+
+	# create "opener" (OpenerDirector instance)
+	return request.build_opener(handler)
+
+def get_opener_with_bearer(top_level_url: "str", username: "str", password: "str") -> "request.OpenerDirector":
 	"""
 	Taken from https://stackoverflow.com/a/44239906
 	"""

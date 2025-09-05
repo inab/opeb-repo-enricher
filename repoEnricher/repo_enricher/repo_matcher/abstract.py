@@ -59,7 +59,35 @@ class AbstractRepoMatcher(abc.ABC):
 		self.req_period = None
 		self._opener = self._getOpener()
 	
-	def reqPeriod(self):
+	def getNumReqAndReset(self) -> "Tuple[int, int]":
+		"""
+		It returns what it is set up in the configuration file
+		and it assumes 1 hour to reset the counter
+		"""
+		if self._remaining is None:
+			self._remaining = config.getint(
+				self.kind(),
+				'numreq',
+				fallback=config.getint(
+					'default',
+					'numreq',
+					fallback=3600
+				)
+			)
+			self._resettime = round(datetime.datetime.now(datetime.timezone.utc).timestamp()) + 3600
+
+		return config.getint(
+			self.kind(),
+			'numreq',
+			fallback=config.getint(
+				'default',
+				'numreq',
+				fallback=3600
+			)
+		) ,
+		round(datetime.datetime.now(datetime.timezone.utc).timestamp()) + 3600
+	
+	def reqPeriod(self) -> "float":
 		if self.req_period is None:
 			config = self.config
 			numreq = config.getint(self.kind(), 'numreq', fallback=config.getint('default', 'numreq', fallback=3600))
@@ -67,20 +95,26 @@ class AbstractRepoMatcher(abc.ABC):
 		
 		return self.req_period
 	
+	def updatePeriod(self, response) -> "None":
+		"""
+		This method is going to be overloaded by GitHub
+		"""
+		pass
+	
 	@abc.abstractclassmethod
-	def kind(cls) -> str:
+	def kind(cls) -> "str":
 		pass
 	
 	@abc.abstractmethod
-	def doesMatch(self, uriStr: str) -> Tuple[bool, Optional[str], Optional[str]]:
+	def doesMatch(self, uriStr: "str") -> "Tuple[bool, Optional[str], Optional[str]]":
 		pass
 	
 	@abc.abstractmethod
-	def getRepoData(self, fullrepo: Mapping[str, Any]) -> Mapping[str, Any]:
+	def getRepoData(self, fullrepo: "Mapping[str, Any]") -> "Mapping[str, Any]":
 		pass
 	
 	@abc.abstractmethod
-	def _getCredentials(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+	def _getCredentials(self) -> "Tuple[Optional[str], Optional[str], Optional[str]]":
 		return None, None, None
 	
 	def _getOpener(self) -> urllib.request.OpenerDirector:
@@ -88,7 +122,7 @@ class AbstractRepoMatcher(abc.ABC):
 		
 		return urllib.request.urlopen  if user is None  else  get_opener_with_auth(top_level_url, user, token).open
 	
-	def fetchJSON(self, bUri: Union[str, urllib.parse.ParseResult], p_acceptHeaders: Optional[str] = None, numIter: int = 0) -> Tuple[bool, List[Mapping]]:
+	def fetchJSON(self, bUri: "Union[str, urllib.parse.ParseResult]", p_acceptHeaders: "Optional[str]" = None, numIter: "int" = 0, period: "Optional[float]" = None) -> "Tuple[bool, List[Mapping]]":
 		"""
 		Shared method to fetch data from repos
 		"""
@@ -99,7 +133,8 @@ class AbstractRepoMatcher(abc.ABC):
 			uriStr = bUri
 		
 		bData = None
-		period = self.reqPeriod()
+		if period is None:
+			period = self.reqPeriod()
 		
 		is_success = True
 		while is_success:

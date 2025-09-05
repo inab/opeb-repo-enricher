@@ -22,6 +22,7 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
 
 	GITHUB_ENDPOINT = 'https://' + GITHUB_HOST
 	GITHUB_API_ENDPOINT = 'https://api.github.com/'
+	GITHUB_API_RATE_LIMIT = GITHUB_API_ENDPOINT + 'rate_limit'
 	
 	GITHUB_API_V_HEADER = 'application/vnd.github.v3+json'
 
@@ -42,6 +43,27 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
 		gh_token = self.config.get(self.GITHUB_KIND, 'gh-token', fallback=None)
 		
 		return gh_user, gh_token, self.GITHUB_API_ENDPOINT
+	
+	def _quotaData(self) -> "Mapping[str, Any]":
+		quotaSuccess, quotaData = self.fetchJSON(self.GITHUB_API_RATE_LIMIT, p_acceptHeaders=self.GITHUB_API_V_HEADER, period=super().reqPeriod())
+		
+		return quotaData
+	
+	def getNumReqAndReset(self) -> "Tuple[int, int]":
+		"""
+		This method queries GitHub, so we are sure about what we are doing
+		"""
+		if self._remaining is None:
+			current_quota = self._quotaData()
+			self._remaining = current_quota["rate"]["remaining"]
+			self._resettime = current_quota["rate"]["reset"]
+		return self._remaining, self._resettime
+	
+	def updatePeriod(self, response) -> "None":
+		"""
+		This method is going to be overloaded by GitHub
+		"""
+		pass
 	
 	def doesMatch(self, uriStr: str) -> Tuple[bool, Optional[str], Optional[str]]:
 		isUri = False
