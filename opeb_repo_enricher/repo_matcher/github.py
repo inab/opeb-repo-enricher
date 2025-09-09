@@ -15,7 +15,6 @@ if TYPE_CHECKING:
         Mapping,
         MutableMapping,
         Optional,
-        Sequence,
         Tuple,
     )
 import urllib
@@ -67,7 +66,8 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
             period=super().reqPeriod(),
         )
 
-        return cast("Mapping[str, Any]", quotaData)
+        assert quotaSuccess and len(quotaData) > 0
+        return quotaData[0]
 
     def getNumReqAndReset(self) -> "Tuple[int, int]":
         """
@@ -160,14 +160,12 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                 userUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
             )
 
-            if isinstance(userDataL, list):
-                userData = userDataL[0]
-            else:
-                userData = cast("Mapping[str, Any]", userDataL)
-
             # Record it in the user cache
-            if userSuccess:
+            if userSuccess and len(userDataL) > 0:
+                userData = userDataL[0]
                 self.githubUserCache[username] = userData
+            else:
+                userSuccess = False
 
         else:
             userSuccess = True
@@ -205,11 +203,9 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
             repoSuccess, repoDataF = self.fetchJSON(
                 repoUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
             )
-            repoData = cast("Mapping[str, Any]", repoDataF)
 
-            minProcessing = not repoSuccess
-
-            if repoSuccess:
+            if repoSuccess and len(repoDataF):
+                repoData = repoDataF[0]
                 self.logger.info(f"\t- Extended processing {owner} {repo}")
                 # The real repo and/or owner could be different from the registered one
                 realOwner = None
@@ -323,10 +319,9 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             + urllib.parse.urlencode({"state": "all"}),
                         )
 
-                        issuesSuccess, issuesDataF = self.fetchJSON(
+                        issuesSuccess, issuesData = self.fetchJSON(
                             issuesUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                         )
-                        issuesData = cast("Sequence[Mapping[str, Any]]", issuesDataF)
 
                         # It gathers the date of the last issue, and the date of the last update
                         if issuesSuccess:
@@ -417,10 +412,10 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             )
                         ),
                     )
-                    releasesSuccess, releasesDataF = self.fetchJSON(
+                    releasesSuccess, releasesData = self.fetchJSON(
                         releasesUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                     )
-                    releasesData = cast("Sequence[Mapping[str, Any]]", releasesDataF)
+
                     if releasesSuccess:
                         # Versions
                         for release in releasesData:
@@ -458,10 +453,10 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             )
                         ),
                     )
-                    tagsSuccess, tagsDataF = self.fetchJSON(
+                    tagsSuccess, tagsData = self.fetchJSON(
                         tagsUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                     )
-                    tagsData = cast("Sequence[Mapping[str, Any]]", tagsDataF)
+
                     if tagsSuccess:
                         # Tags treated as versions
                         vercheck = set(versions)
@@ -483,11 +478,8 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                         langsUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                     )
                     # Using only the first element
-                    if isinstance(langsDataF, list):
+                    if langsSuccess and len(langsDataF) > 0:
                         langsData = langsDataF[0]
-                    else:
-                        langsData = cast("Mapping[str, Any]", langsDataF)
-                    if langsSuccess:
                         ans["languages"] = list(langsData.keys())
 
                         interpreted = False
@@ -509,6 +501,8 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             if lang in langsData:
                                 ans["tool_buildSystem"] = build_tool
                                 break
+                    else:
+                        langsSuccess = False
 
                     contributors = list()
 
@@ -521,10 +515,10 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             )
                         ),
                     )
-                    contrSuccess, contrDataF = self.fetchJSON(
+                    contrSuccess, contrData = self.fetchJSON(
                         contrUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                     )
-                    contrData = cast("Sequence[Mapping[str, Any]]", contrDataF)
+
                     if contrSuccess:
                         # credits
                         for contributor in contrData:
@@ -561,11 +555,9 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                         licSuccess, licDataF = self.fetchJSON(
                             licUri, p_acceptHeaders=self.GITHUB_API_V_HEADER
                         )
-                        if isinstance(licDataF, list):
+
+                        if licSuccess and len(licDataF) > 0:
                             licData = licDataF[0]
-                        else:
-                            licData = cast("Mapping[str, Any]", licDataF)
-                        if licSuccess:
                             # sourcecode freeness
                             ans["source_isFree"] = True
                             html_link = licData.get("_links", dict()).get("html")
@@ -592,6 +584,8 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                                 ans["is_opensource"] = True
                                 # 'OSI'
                                 ans["is_OSI"] = True
+                        else:
+                            licSuccess = False
 
                     # Looking for a README and other elements
                     commitUri = urllib.parse.urljoin(
@@ -603,10 +597,10 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             )
                         ),
                     )
-                    commitSuccess, commitDataF = self.fetchJSON(
+                    commitSuccess, commitData = self.fetchJSON(
                         commitUri, p_acceptHeaders=self.GITHUB_API_V_HEADER, numIter=1
                     )
-                    commitData = cast("Sequence[Mapping[str, Any]]", commitDataF)
+
                     if commitSuccess and len(commitData) > 0:
                         treeUri = commitData[0]["commit"]["tree"]["url"]
 
@@ -623,6 +617,8 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                                 if elem["path"].lower().startswith("readme"):
                                     ans["readmeFile"] = elem["path"]
                                     break
+                    else:
+                        commitSuccess = False
 
                     # my $pullsUri = URI->new(GITHUB_API_ENDPOINT);
                     # $pullsUri->path_segments("","repos",$realOwner,$realRepo,'pulls');
@@ -640,6 +636,10 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                     # credits
                     if len(contributors) > 0:
                         ans["tool_developers"] = contributors
+            else:
+                repoSuccess = False
+
+            minProcessing = not repoSuccess
 
             # These are failed, strange cases
             if minProcessing:

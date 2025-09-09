@@ -5,7 +5,6 @@ import datetime
 import re
 import statistics
 from typing import (
-    cast,
     TYPE_CHECKING,
 )
 
@@ -151,14 +150,12 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                 userUri, p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER
             )
 
-            if isinstance(userDataList, list):
-                userData = userDataList[0]
-            else:
-                userData = cast("Mapping[str, Any]", userDataList)
-
             # Record it in the user cache
-            if userSuccess:
+            if userSuccess and len(userDataList) > 0:
+                userData = userDataList[0]
                 self.bitbucketUserCache[username] = userData
+            else:
+                userSuccess = False
 
         return userSuccess, userData
 
@@ -192,10 +189,15 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                     )
                 ),
             )
-            repoSuccess, repoData = self.fetchJSON(
+            repoSuccess, repoDataL = self.fetchJSON(
                 repoUri, p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER
             )
-            assert isinstance(repoData, dict)
+            if repoSuccess and len(repoDataL) > 0:
+                repoData = repoDataL[0]
+
+                assert isinstance(repoData, dict)
+            else:
+                repoSuccess = False
 
             minProcessing = not repoSuccess
 
@@ -363,7 +365,10 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 repoUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            issuesData = cast("Mapping[str, Any]", issuesDataF)
+                            if issuesSuccess and len(issuesDataF) > 0:
+                                issuesData = issuesDataF[0]
+                            else:
+                                issuesSuccess = False
                         assert issuesUri is not None
                         issuesUri += "?" + urllib.parse.urlencode(
                             {self.BITBUCKET_PAGELEN: self.pageSize}
@@ -386,11 +391,11 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 issuesUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            issuesData = cast("Mapping[str, Any]", issuesDataF)
 
                             issuesUri = None
                             # It gathers the date of the last issue, and the date of the last update
-                            if issuesSuccess:
+                            if issuesSuccess and len(issuesDataF) > 0:
+                                issuesData = issuesDataF[0]
                                 # First, check next iteration link
                                 issuesUri = issuesData.get("next")
 
@@ -452,6 +457,8 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                             lastClosed = issueUpdated
                                     else:
                                         numOpen += 1
+                            else:
+                                issuesSuccess = False
 
                         issues = {
                             "total": total,
@@ -491,10 +498,10 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 releasesUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            releasesData = cast("Mapping[str, Any]", releasesDataF)
                             releasesUri = None
 
-                            if releasesSuccess:
+                            if releasesSuccess and len(releasesDataF) > 0:
+                                releasesData = releasesDataF[0]
                                 # Versions
                                 releasesUri = releasesData.get("next")
                                 binaries = ans.setdefault("binaries", list())
@@ -523,6 +530,8 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                         ans["binary_isDownloadRegistered"] = False
 
                                     binaries.append(p_b)
+                            else:
+                                releasesSuccess = False
 
                     tagsUri = linksH.get("tags", dict()).get("href")
                     if tagsUri is not None:
@@ -537,16 +546,18 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 tagsUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            tagsData = cast("Mapping[str, Any]", tagsDataF)
                             tagsUri = None
 
-                            if tagsSuccess:
+                            if tagsSuccess and len(tagsDataF) > 0:
+                                tagsData = tagsDataF[0]
                                 # First, check next iteration link
                                 tagsUri = tagsData.get("next")
 
                                 # Tags treated as versions
                                 for tag in tagsData["values"]:
                                     versions.append(tag["name"])
+                            else:
+                                tagsSuccess = False
 
                     language = repoData.get("language")
                     if isinstance(language, str) and len(language) > 0:
@@ -591,10 +602,10 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 contrUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            contrData = cast("Mapping[str, Any]", contrDataF)
                             contrUri = None
 
-                            if contrSuccess:
+                            if contrSuccess and len(contrDataF) > 0:
+                                contrData = contrDataF[0]
                                 contrUri = contrData.get("next")
 
                                 # credits
@@ -628,6 +639,8 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
 
                                         contributors.append(p_contribOpEB)
                                         contribSet.add(name)
+                            else:
+                                contrSuccess = False
 
                     forksUri = linksH.get("forks", dict()).get("href")
                     if forksUri is not None:
@@ -635,10 +648,12 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                         forksSuccess, forksDataF = self.fetchJSON(
                             forksUri, p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER
                         )
-                        forksData = cast("Mapping[str, Any]", forksDataF)
 
-                        if forksSuccess:
+                        if forksSuccess and len(forksDataF) > 0:
+                            forksData = forksDataF[0]
                             ans["numForks"] = forksData["size"]
+                        else:
+                            forksSuccess = False
 
                     watchersUri = linksH.get("watchers", dict()).get("href")
                     if watchersUri is not None:
@@ -647,10 +662,12 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                             watchersUri,
                             p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                         )
-                        watchersData = cast("Mapping[str, Any]", watchersDataF)
 
-                        if watchersSuccess:
+                        if watchersSuccess and len(watchersDataF) > 0:
+                            watchersData = watchersDataF[0]
                             ans["numWatchers"] = watchersData["size"]
+                        else:
+                            watchersSuccess = False
 
                     branchesUri = linksH.get("branches", dict()).get("href")
                     if branchesUri is not None:
@@ -667,10 +684,10 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                 branchesUri,
                                 p_acceptHeaders=self.BITBUCKET_API_ACCEPT_HEADER,
                             )
-                            branchesData = cast("Mapping[str, Any]", branchesDataF)
                             branchesUri = None
 
-                            if branchesSuccess:
+                            if branchesSuccess and len(branchesDataF) > 0:
+                                branchesData = branchesDataF[0]
                                 branchesUri = branchesData.get("next")
 
                                 for branch in branchesData.get("values", list()):
@@ -684,6 +701,8 @@ class BitBucketRepoMatcher(AbstractRepoMatcher):
                                         p_br["lastPush"] = target_date
                                         if target_date >= lastPush:
                                             lastPush = target_date
+                            else:
+                                branchesSuccess = False
 
                         # At last
                         ans["lastPush"] = lastPush

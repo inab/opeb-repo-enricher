@@ -186,7 +186,7 @@ class AbstractRepoMatcher(abc.ABC):
         p_acceptHeaders: "Optional[str]" = None,
         numIter: "int" = 0,
         period: "Optional[float]" = None,
-    ) -> "Tuple[bool, Union[Sequence[Mapping[str, Any]], Mapping[str, Any]]]":
+    ) -> "Tuple[bool, Sequence[Mapping[str, Any]]]":
         """
         Shared method to fetch data from repos
         """
