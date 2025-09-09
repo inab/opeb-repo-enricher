@@ -214,9 +214,12 @@ class AbstractRepoMatcher(abc.ABC):
             linkH = None
             try:
                 with self._opener(req) as response:
-                    newBData: "Union[Mapping[str, Any], Sequence[Mapping[str, Any]]]" = json.load(
-                        response
-                    )
+                    newBData: "Union[Mapping[str, Any], Sequence[Mapping[str, Any]]]"
+                    if response.code == 204:
+                        # No content
+                        newBData = []
+                    else:
+                        newBData = json.load(response)
                     linkH = response.getheader("Link")
 
             except json.JSONDecodeError as jde:
