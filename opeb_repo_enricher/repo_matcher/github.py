@@ -88,7 +88,7 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
         """
         pass
 
-    def doesMatch(self, uriStr: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    def doesMatch(self, uriStr: "str") -> "Tuple[bool, Optional[str], Optional[str]]":
         isUri = False
         owner = None
         repo = None
