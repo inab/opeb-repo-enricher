@@ -174,7 +174,7 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
 
         return userSuccess, userData
 
-    def getRepoData(self, fullrepo: Mapping[str, Any]) -> Mapping[str, Any]:
+    def getRepoData(self, fullrepo: "Mapping[str, Any]") -> "Mapping[str, Any]":
         owner = fullrepo["workspace"]
         repo = fullrepo["repo"]
 
