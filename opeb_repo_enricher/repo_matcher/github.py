@@ -526,13 +526,14 @@ class GitHubRepoMatcher(AbstractRepoMatcher):
                             user_obtained, p_contrib = self.getGitHubUser(
                                 contributor_login
                             )
-                            assert user_obtained and p_contrib is not None
 
                             contribOpEB = {
                                 "username": contributor_login,
                             }
 
                             for key in ("name", "company", "location", "email"):
+                                if not user_obtained or p_contrib is None:
+                                    continue
                                 valkey = p_contrib.get(key)
                                 if valkey is not None:
                                     contribOpEB[key] = valkey
