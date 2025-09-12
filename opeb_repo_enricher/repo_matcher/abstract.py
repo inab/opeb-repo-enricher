@@ -231,10 +231,8 @@ class AbstractRepoMatcher(abc.ABC):
                 is_success = False
                 # raise RepoMatcherException(f'Kicked out {bUriStr}: {he.code}') from he
             except urllib.error.URLError as ue:
-                raise RepoMatcherException(f"Kicked out {bUriStr}: {ue.reason}") from ue
-            except Exception as e:
-                raise RepoMatcherException(f"Kicked out {bUriStr}") from e
-
+                self.logger.exception(f"Kicked out {bUriStr}: {ue.reason}")
+                is_success = False
             except Exception:
                 # Show must go on
                 self.logger.exception(f"Kicked out {bUriStr}")
