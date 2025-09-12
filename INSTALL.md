@@ -1,21 +1,24 @@
 # Installation instructions for OpenEBench repoEnricher
 
-* You need to have `cpan` in order to install the dependencies declared at [cpanfile](cpanfile). `cpan` is available in many Linux distributions (Ubuntu package `perl`, CentOS package `perl-CPAN`), and also at [App::Cpan](http://search.cpan.org/~andk/CPAN-2.16/) Perl package.
+The python version of OpenEBench repoEnricher is based on standard Python libraries.
 
-* You also need to have installed development versions of OpenSSL, needed by one of the dependencies in the cpanfile. In Ubuntu, you need to install both `libssl-dev` and `zlib1g-dev`:
-
-```bash
-apt-get -y install libssl-dev zlib1g-dev
-```
-
-* [Carton](https://metacpan.org/pod/Carton) is used to install the program dependencies in the `deps` directory, so your Perl installation is not polluted. As the program could not be available, these are the commands (which use `cpan`) to run:
+If you are interested in the development, the recommended approach is creating a virtual environment,
+where to install all the dependencies declared a [dev-requirements.txt](dev-requirements.txt):
 
 ```bash
-perl -MCarton -c -e '' || cpan -i Carton
-carton install -p deps --deployment
+python3 -mvenv .full13
+source .full13/bin/activate
+pip install --upgrade pip wheel
+pip install -r dev-requirements.txt
+pre-commit install
 ```
 
-* If you upgrade your installed Perl version, or you move this folder to a different location after following this instructions you may need to reinstall the dependencies. In that case, you should remove the `deps` directory and follow again the installation instructions.
+One of these dependencies is [pre-commit](https://pre-commit.com/), which performs several checks
+([ruff](https://docs.astral.sh/ruff/), [mypy](https://mypy-lang.org/), ...) declared at
+[.pre-commit-config.yaml](.pre-commit-config.yaml).
+
+Due the way mypy is installed, if you name in a different way the virtual environment,
+you have to fix the path around line 33. 
 
 # Metrics uploading to OpenEBench
 

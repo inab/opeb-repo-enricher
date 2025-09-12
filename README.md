@@ -13,7 +13,7 @@ In order to use this tool with no ban, you have to obtain next information:
 Then, you have to create a configuration file like [sample-config.ini](sample-config.ini) with the obtained personal tokens and additional information, so you can call the tool in the next way.
 
 ```bash
-python repoEnricher.pl --config myConfig.ini --directory=output
+python repoEnricher.py --config myConfig.ini --directory=output
 ```
 
 The supported parameters are:
